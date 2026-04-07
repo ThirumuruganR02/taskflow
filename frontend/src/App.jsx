@@ -2,14 +2,17 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import DashboardPage from "./pages/DashboardPage";
-import { isLoggedIn } from "./utils/auth";
+
+function hasToken() {
+  return !!localStorage.getItem("token");
+}
 
 function ProtectedRoute({ children }) {
-  return isLoggedIn() ? children : <Navigate to="/login" replace />;
+  return hasToken() ? children : <Navigate to="/login" replace />;
 }
 
 function PublicRoute({ children }) {
-  return isLoggedIn() ? <Navigate to="/" replace /> : children;
+  return hasToken() ? <Navigate to="/" replace /> : children;
 }
 
 export default function App() {
@@ -39,6 +42,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

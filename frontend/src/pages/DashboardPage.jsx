@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import client from "../api/client";
-import Layout from "../components/Layout";
-import TaskForm, { defaultForm } from "../components/TaskForm";
-import TaskToolbar from "../components/TaskToolbar";
-import TaskCard from "../components/TaskCard";
-import StatCard from "../components/StatCard";
+
+const defaultForm = {
+  title: "",
+  description: "",
+  status: "PENDING",
+  dueDate: "",
+};
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState([]);
@@ -22,6 +24,7 @@ export default function DashboardPage() {
       const { data } = await client.get("/api/tasks");
       setTasks(data);
     } catch (err) {
+      console.error(err);
       setError("Could not load tasks.");
     } finally {
       setPageLoading(false);
@@ -32,7 +35,6 @@ export default function DashboardPage() {
     fetchTasks();
   }, []);
 
-  // 🔥 FIXED DATE FORMAT HERE
   const formatDateTime = (date) => {
     if (!date) return null;
     return date.length === 10 ? `${date}T00:00:00` : date;
@@ -41,21 +43,23 @@ export default function DashboardPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    const payload = {
-      ...form,
-      dueDate: formatDateTime(form.dueDate),
-    };
+    setError("");
 
     try {
+      const payload = {
+        ...form,
+        dueDate: formatDateTime(form.dueDate),
+      };
+
       if (editingId) {
         await client.put(`/api/tasks/${editingId}`, payload);
       } else {
         await client.post("/api/tasks", payload);
       }
+
       setForm(defaultForm);
       setEditingId(null);
-      fetchTasks();
+      await fetchTasks();
     } catch (err) {
       console.error(err);
       setError("Unable to save task.");
@@ -66,20 +70,12 @@ export default function DashboardPage() {
 
   const handleEdit = (task) => {
     setEditingId(task.id);
-
-    // 🔥 FIX DATE FORMAT FOR INPUT
-    const formattedDate = task.dueDate
-      ? task.dueDate.substring(0, 10)
-      : "";
-
     setForm({
       title: task.title || "",
       description: task.description || "",
       status: task.status || "PENDING",
-      dueDate: formattedDate,
+      dueDate: task.dueDate ? task.dueDate.substring(0, 10) : "",
     });
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleDelete = async (id) => {
@@ -89,8 +85,9 @@ export default function DashboardPage() {
         setEditingId(null);
         setForm(defaultForm);
       }
-      fetchTasks();
+      await fetchTasks();
     } catch (err) {
+      console.error(err);
       setError("Unable to delete task.");
     }
   };
@@ -102,18 +99,24 @@ export default function DashboardPage() {
       });
       setTasks(data);
     } catch (err) {
+      console.error(err);
       setError("Search failed.");
     }
   };
 
   const handleFilter = async () => {
-    if (!status) return fetchTasks();
+    if (!status) {
+      fetchTasks();
+      return;
+    }
+
     try {
       const { data } = await client.get("/api/tasks/filter", {
         params: { status },
       });
       setTasks(data);
     } catch (err) {
+      console.error(err);
       setError("Filter failed.");
     }
   };
@@ -134,65 +137,116 @@ export default function DashboardPage() {
   }, [tasks]);
 
   return (
-    <Layout>
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Personal productivity workspace</p>
-          <h2>Plan tasks, track progress, hit deadlines.</h2>
-        </div>
-      </section>
+    <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
+      <h1>TaskFlow Dashboard</h1>
+      <p>Total: {stats.total}</p>
+      <p>Pending: {stats.pending}</p>
+      <p>In Progress: {stats.progress}</p>
+      <p>Completed: {stats.completed}</p>
 
-      <section className="stats-grid">
-        <StatCard label="Total Tasks" value={stats.total} />
-        <StatCard label="Pending" value={stats.pending} />
-        <StatCard label="In Progress" value={stats.progress} />
-        <StatCard label="Completed" value={stats.completed} />
-      </section>
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
-      {error && <div className="alert error">{error}</div>}
-
-      <section className="dashboard-grid">
-        <TaskForm
-          form={form}
-          setForm={setForm}
-          onSubmit={handleSubmit}
-          isEditing={!!editingId}
-          onCancelEdit={() => {
-            setEditingId(null);
-            setForm(defaultForm);
-          }}
-          loading={loading}
+      <form onSubmit={handleSubmit} style={{ marginBottom: "24px" }}>
+        <input
+          type="text"
+          placeholder="Title"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          style={{ display: "block", marginBottom: "10px", width: "300px" }}
+          required
         />
 
-        <div className="content-column">
-          <TaskToolbar
-            search={search}
-            setSearch={setSearch}
-            status={status}
-            setStatus={setStatus}
-            onSearch={handleSearch}
-            onFilter={handleFilter}
-            onReset={handleReset}
-          />
+        <textarea
+          placeholder="Description"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          style={{ display: "block", marginBottom: "10px", width: "300px", height: "80px" }}
+        />
 
-          {pageLoading ? (
-            <div className="panel empty-state">Loading tasks...</div>
-          ) : tasks.length === 0 ? (
-            <div className="panel empty-state">No tasks found.</div>
-          ) : (
-            <div className="task-grid">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-    </Layout>
+        <select
+          value={form.status}
+          onChange={(e) => setForm({ ...form, status: e.target.value })}
+          style={{ display: "block", marginBottom: "10px", width: "300px" }}
+        >
+          <option value="PENDING">PENDING</option>
+          <option value="IN_PROGRESS">IN_PROGRESS</option>
+          <option value="COMPLETED">COMPLETED</option>
+        </select>
+
+        <input
+          type="date"
+          value={form.dueDate}
+          onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+          style={{ display: "block", marginBottom: "10px", width: "300px" }}
+        />
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Saving..." : editingId ? "Update Task" : "Add Task"}
+        </button>
+
+        {editingId && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditingId(null);
+              setForm(defaultForm);
+            }}
+            style={{ marginLeft: "10px" }}
+          >
+            Cancel
+          </button>
+        )}
+      </form>
+
+      <div style={{ marginBottom: "20px" }}>
+        <input
+          type="text"
+          placeholder="Search tasks"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ marginRight: "10px" }}
+        />
+        <button onClick={handleSearch}>Search</button>
+
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          style={{ marginLeft: "10px", marginRight: "10px" }}
+        >
+          <option value="">All</option>
+          <option value="PENDING">PENDING</option>
+          <option value="IN_PROGRESS">IN_PROGRESS</option>
+          <option value="COMPLETED">COMPLETED</option>
+        </select>
+
+        <button onClick={handleFilter}>Filter</button>
+        <button onClick={handleReset} style={{ marginLeft: "10px" }}>
+          Reset
+        </button>
+      </div>
+
+      {pageLoading ? (
+        <p>Loading tasks...</p>
+      ) : tasks.length === 0 ? (
+        <p>No tasks found.</p>
+      ) : (
+        <ul>
+          {tasks.map((task) => (
+            <li key={task.id} style={{ marginBottom: "16px" }}>
+              <strong>{task.title}</strong> - {task.status}
+              <br />
+              {task.description}
+              <br />
+              Due: {task.dueDate || "No due date"}
+              <br />
+              <button onClick={() => handleEdit(task)}>Edit</button>
+              <button onClick={() => handleDelete(task.id)} style={{ marginLeft: "10px" }}>
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

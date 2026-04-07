@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import client from "../api/client";
-import { saveAuth } from "../utils/auth";
 
 export default function SignupPage() {
   const navigate = useNavigate();
+
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -13,8 +13,12 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) =>
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    setForm((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,11 +26,21 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const { data } = await client.post("/api/auth/signup", form);
-      saveAuth(data);
+      const { data } = await client.post("/api/auth/signup", {
+        username: form.username.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      });
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("username", data.username || "");
+      localStorage.setItem("email", data.email || "");
+      localStorage.setItem("role", data.role || "");
+
       navigate("/");
     } catch (err) {
-      setError(err?.response?.data?.message || "Signup failed");
+      console.error(err);
+      setError("Signup failed. Try different email or username.");
     } finally {
       setLoading(false);
     }
@@ -34,46 +48,49 @@ export default function SignupPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-card" onSubmit={handleSubmit}>
+      <div className="auth-card">
         <h1>Create account</h1>
-        <p>Start planning with TaskFlow.</p>
+        <p>Start managing your tasks with TaskFlow.</p>
 
         {error && <div className="alert error">{error}</div>}
 
-        <input
-          name="username"
-          placeholder="Username"
-          value={form.username}
-          onChange={handleChange}
-          required
-        />
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            name="username"
+            placeholder="Enter username"
+            value={form.username}
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          required
-        />
+          <input
+            type="email"
+            name="email"
+            placeholder="Enter email"
+            value={form.email}
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          required
-        />
+          <input
+            type="password"
+            name="password"
+            placeholder="Enter password"
+            value={form.password}
+            onChange={handleChange}
+            required
+          />
 
-        <button className="primary-btn" type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Sign up"}
-        </button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Creating..." : "Create Account"}
+          </button>
+        </form>
 
-        <p className="auth-switch">
-          Already registered? <Link to="/login">Login</Link>
+        <p>
+          Already have an account? <Link to="/login">Login</Link>
         </p>
-      </form>
+      </div>
     </div>
   );
 }
