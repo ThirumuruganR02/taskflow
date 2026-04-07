@@ -8,11 +8,13 @@ export default function Layout({ children }) {
 
   const handleLogout = () => {
     clearAuth();
-    navigate("/login");
+    navigate("/login", { replace: true });
+    window.location.reload();
   };
 
   return (
     <div className="app-shell">
+      {/* Sidebar */}
       <aside className="sidebar">
         <div className="brand">
           <CheckSquare size={28} />
@@ -25,16 +27,32 @@ export default function Layout({ children }) {
         <div className="user-box">
           <span className="label">Signed in as</span>
           <strong>{user?.username || "User"}</strong>
-          <small>{user?.email || ""}</small>
+          <small>{user?.email || "No email available"}</small>
         </div>
-
-        <button className="ghost-btn logout-btn" onClick={handleLogout}>
-          <LogOut size={18} />
-          Logout
-        </button>
       </aside>
 
-      <main className="main-content">{children}</main>
+      {/* Main Content */}
+      <main className="main-content">
+        {/* Topbar with logout */}
+        <div className="mobile-topbar">
+          <div className="mobile-brand">
+            <CheckSquare size={22} />
+            <span>TaskFlow</span>
+          </div>
+
+          <button
+            type="button"
+            className="ghost-btn logout-btn mobile-logout"
+            onClick={handleLogout}
+            title="Logout"
+          >
+            <LogOut size={18} />
+            <span>Logout</span>
+          </button>
+        </div>
+
+        {children}
+      </main>
     </div>
   );
 }

@@ -1,33 +1,25 @@
-export const TOKEN_KEY = "taskflow_token";
-export const USER_KEY = "taskflow_user";
-
-export function saveAuth(authResponse) {
-  localStorage.setItem(TOKEN_KEY, authResponse.token);
-
-  localStorage.setItem(
-    USER_KEY,
-    JSON.stringify({
-      username: authResponse.username,
-      email: authResponse.email,
-      role: authResponse.role,
-    })
-  );
-}
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function getUser() {
-  const raw = localStorage.getItem(USER_KEY);
-  return raw ? JSON.parse(raw) : null;
+export function saveAuth(data) {
+  localStorage.setItem("token", data.token || "");
+  localStorage.setItem("username", data.username || "");
+  localStorage.setItem("email", data.email || "");
+  localStorage.setItem("role", data.role || "");
 }
 
 export function clearAuth() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem("token");
+  localStorage.removeItem("username");
+  localStorage.removeItem("email");
+  localStorage.removeItem("role");
 }
 
-export function isLoggedIn() {
-  return !!getToken();
+export function isAuthenticated() {
+  return !!localStorage.getItem("token");
+}
+
+export function getUser() {
+  return {
+    username: localStorage.getItem("username"),
+    email: localStorage.getItem("email"),
+    role: localStorage.getItem("role"),
+  };
 }
